@@ -29,6 +29,9 @@ jobs:
         run: |
           echo "IMAGE_TAG=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
+      - name: Lowercase repository name
+        run: echo "REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -66,7 +69,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository }}:${{ env.IMAGE_TAG }}
+            ghcr.io/${{ env.REPO_LOWER }}:${{ env.IMAGE_TAG }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -87,11 +90,11 @@ jobs:
           if [ ! -f "$VALUES_PATH" ]; then
             printf '%s\n' \
               "image:" \
-              "  repository: ghcr.io/${{ github.repository }}" \
+              "  repository: ghcr.io/${{ env.REPO_LOWER }}" \
               "  tag: ${{ env.IMAGE_TAG }}" \
               > "$VALUES_PATH"
           fi
-          sed -i -E "s#^([[:space:]]*repository:).*#\\1 ghcr.io/${{ github.repository }}#" "$VALUES_PATH" || true
+          sed -i -E "s#^([[:space:]]*repository:).*#\\1 ghcr.io/${{ env.REPO_LOWER }}#" "$VALUES_PATH" || true
           sed -i -E "s#^([[:space:]]*tag:).*#\\1 ${{ env.IMAGE_TAG }}#" "$VALUES_PATH" || true
           git -C gitops status --short
 
@@ -122,7 +125,7 @@ jobs:
               "deploymentName: ${PR_RESOURCE_NAME}" \
               "serviceName: ${PR_RESOURCE_NAME}" \
               "image:" \
-              "  repository: ghcr.io/${{ github.repository }}" \
+              "  repository: ghcr.io/${{ env.REPO_LOWER }}" \
               "  tag: ${{ env.IMAGE_TAG }}" \
               > "$VALUES_PATH"
           fi
@@ -131,7 +134,7 @@ jobs:
           sed -i -E "s#^([[:space:]]*serviceName:).*#\\1 ${PR_RESOURCE_NAME}#" "$VALUES_PATH" || true
           grep -qE '^[[:space:]]*deploymentName:' "$VALUES_PATH" || echo "deploymentName: ${PR_RESOURCE_NAME}" >> "$VALUES_PATH"
           grep -qE '^[[:space:]]*serviceName:' "$VALUES_PATH" || echo "serviceName: ${PR_RESOURCE_NAME}" >> "$VALUES_PATH"
-          sed -i -E "s#^([[:space:]]*repository:).*#\\1 ghcr.io/${{ github.repository }}#" "$VALUES_PATH" || true
+          sed -i -E "s#^([[:space:]]*repository:).*#\\1 ghcr.io/${{ env.REPO_LOWER }}#" "$VALUES_PATH" || true
           sed -i -E "s#^([[:space:]]*tag:).*#\\1 ${{ env.IMAGE_TAG }}#" "$VALUES_PATH" || true
           git -C gitops status --short
 
@@ -180,6 +183,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Lowercase repository name
+        run: echo "REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Check chart changes
         id: chart_changes
         run: |
@@ -203,4 +209,4 @@ jobs:
         run: |
           helm package chart --destination .
           CHART_TGZ="$(ls -1 *.tgz | head -1)"
-          helm push "$CHART_TGZ" oci://ghcr.io/${{ github.repository }}
+          helm push "$CHART_TGZ" oci://ghcr.io/${{ env.REPO_LOWER }}
